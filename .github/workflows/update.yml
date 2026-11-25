@@ -1,0 +1,51 @@
+name: Sync data and deploy
+
+on:
+  schedule:
+    - cron: "37 20 * * *"   # 매일 05:37 KST — after the lodging (03:17) and PM (04:41) dashboards have rebuilt
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["site/**", "scripts/**", ".github/workflows/update.yml", "requirements.txt"]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      # The data come from the two published dashboards (no API keys here); a required file missing stops the run,
+      # so the last deployed site stays up
+      - name: Sync data from the lodging and PM dashboards
+        run: python scripts/sync.py
+      - name: Version the page assets so browsers do not mix a new page with cached old scripts
+        run: |
+          sed -i -E "s/(app\.js|style\.css|pwa\.js|theme-datalab\.css)\"/\1?v=${GITHUB_SHA::7}\"/g" site/index.html
+          sed -i "s/__BUILD__/${GITHUB_SHA::7}/" site/sw.js
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
