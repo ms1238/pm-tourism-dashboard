@@ -1,7 +1,7 @@
 // PM Tourism Dashboard service worker: 한 번 연 화면과 자료를 저장해 두어 오프라인에서도 열리게 함
 const VERSION = '__BUILD__';  // the workflow writes the commit here, so each code deploy installs a fresh worker and cache
 const CACHE = 'pmtour-' + VERSION, LIB = 'pmtour-lib-v1';  // own prefix: other dashboards share this origin (ms1238.github.io)
-const SHELL = ['./', 'index.html', 'style.css', 'theme-datalab.css', 'app.js', 'indicators.json', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon.svg'];
+const SHELL = ['./', 'index.html', 'style.css', 'theme-datalab.css', 'app.js', 'pmtour.js', 'indicators.json', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon.svg'];
 const LIBS = ['https://unpkg.com/', 'https://cdn.jsdelivr.net/'];  // version-pinned libraries and fonts
 
 self.addEventListener('install', e => {
