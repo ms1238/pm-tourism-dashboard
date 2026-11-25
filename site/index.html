@@ -67,6 +67,7 @@
         <button role="tab" data-g="supply" aria-selected="false">숙박 공급</button>
         <button role="tab" data-g="bal" aria-selected="false">수급 균형</button>
         <button role="tab" data-g="access" aria-selected="false">접근성</button>
+        <button role="tab" data-g="pm" aria-selected="false" class="pm-tab">PM 연계</button>
         <button role="tab" data-g="res" aria-selected="false">연계 자원</button>
         <button role="tab" data-g="policy" aria-selected="false">정책 맥락</button>
         <button role="tab" data-g="method" aria-selected="false">데이터·방법</button>
@@ -304,6 +305,34 @@
     <div class="card"><button class="btn csv" data-csv="trm-table" data-name="터미널주변_업종별">CSV</button><h3 style="margin-bottom:10px" id="trm-table-title">업종별 숙소 수</h3><div class="tablewrap"><table id="trm-table"></table></div>
       <p class="note">이름에 '터미널'이 들어간 곳만 다룹니다(시외버스 정류장·매표소 제외). 영업 중이고 좌표가 정확한 숙소만, 터미널 위치에서 잰 직선거리로 셉니다. 터미널 위치: OpenStreetMap(지역마다 빠진 곳이 있을 수 있음). 터미널의 시·군·구는 반경 3km 안 숙소 주소로 정했습니다.</p></div>
     <div class="card" data-agecard="trm" data-name="터미널주변_객실_노후도"></div>
+  </section>
+
+  <!-- PM 연계 (pmtour.js): 숙박 대시보드 자료 × PM 대동여지도 자료 -->
+  <section data-tab="pmgap" id="pmgap-sec">
+    <div class="sechead"><h2>관광 이동 공백: 대중교통으로 가기 어려운 숙소·관광지</h2><p class="sub" id="pmgap-sub"></p></div>
+    <div class="kpis" id="pmgap-kpis"></div>
+    <div class="card"><button class="btn csv pmt-csv" data-t="pmgap-table" type="button">CSV</button><h3 style="margin-bottom:10px" id="pmgap-title">지역별</h3><div class="tablewrap"><table id="pmgap-table"></table></div>
+      <p class="note" id="pmgap-note"></p></div>
+    <div class="card" id="pmgap-spots-card" hidden><h3 style="margin-bottom:10px">PM으로 메울 수 있는 관광지</h3><div class="tablewrap"><table id="pmgap-spots"></table></div></div>
+  </section>
+  <section data-tab="lastmile" id="lastmile-sec">
+    <div class="sechead"><h2>관광객의 마지막 1~3km</h2><p class="sub" id="lastmile-sub"></p></div>
+    <div class="kpis" id="lastmile-kpis"></div>
+    <div class="card"><button class="btn csv pmt-csv" data-t="lastmile-table" type="button">CSV</button><h3 style="margin-bottom:10px" id="lastmile-title">관광 PM 기회 순위</h3><div class="tablewrap"><table id="lastmile-table"></table></div>
+      <p class="note" id="lastmile-note"></p></div>
+  </section>
+  <section data-tab="pmsup" id="pmsup-sec">
+    <div class="sechead"><h2>PM 공급과 규제</h2><p class="sub" id="pmsup-sub"></p></div>
+    <div class="kpis" id="pmsup-kpis"></div>
+    <div class="card"><button class="btn csv pmt-csv" data-t="pmsup-table" type="button">CSV</button><h3 style="margin-bottom:10px">지역별 공급·규제</h3><div class="tablewrap"><table id="pmsup-table"></table></div>
+      <p class="note" id="pmsup-note"></p></div>
+  </section>
+  <section data-tab="pmsafe" id="pmsafe-sec">
+    <div class="sechead"><h2>PM 안전 (합성데이터)</h2><p class="sub" id="pmsafe-sub"></p></div>
+    <div class="card"><p class="note" style="margin:0"><b>실제 사고 기록이 아닙니다.</b> 한국도로교통공단이 PM 교통사고의 통계적 특성을 본떠 만든 합성데이터입니다. 지역 간 대략적인 경향을 보는 용도로만 쓰고, 특정 지역의 건수를 실제 통계처럼 인용하지 마세요.</p></div>
+    <div class="kpis" id="pmsafe-kpis"></div>
+    <div class="card"><button class="btn csv pmt-csv" data-t="pmsafe-table" type="button">CSV</button><h3 style="margin-bottom:10px">지역별</h3><div class="tablewrap"><table id="pmsafe-table"></table></div>
+      <p class="note" id="pmsafe-note"></p></div>
   </section>
 
   <section data-tab="tourist" id="trr-sec">
@@ -566,5 +595,6 @@
 <script>window.mapLibReady = new Promise(done => { const s = document.createElement('script'); s.src = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js';
   s.onload = s.onerror = () => done(); document.head.appendChild(s); setTimeout(done, 8000); });</script>
 <script src="app.js"></script>
+<script src="pmtour.js"></script>
 </body>
 </html>

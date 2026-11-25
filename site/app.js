@@ -229,6 +229,7 @@
   const map = typeof maplibregl === 'undefined' ? null : new maplibregl.Map({
     container: 'map', style: 'https://tiles.openfreemap.org/styles/positron', center: [127.8, 36.2], zoom: 5.6, attributionControl: { compact: true } });
   let mapReady = false, radiusOn = false;  // radiusOn: 반경 분석 모드(지도 클릭 = 반경 숙소 세기)
+  window.PMT_CTX = { state, S, map, isMapReady: () => mapReady, regionName: () => regionName() };  // read by pmtour.js (PM 연계 탭)
   const empty = { type: 'FeatureCollection', features: [] };
   if (map) {
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
@@ -780,6 +781,7 @@
     syncMore();
     renderFest();
     renderPark();
+    window.PMT?.update();  // PM 연계 탭 (pmtour.js)
     writeHash();
     drawTimeline();
     drawMap(fly);
@@ -3599,6 +3601,7 @@
   // 탭은 관광 수용태세 영역별 8개 묶음, 묶음 안에 세부 탭(하나뿐이면 세부 줄을 숨김). tab은 세부 탭 이름이라 공유 링크(#tab=…)도 그대로 씀
   const GROUPS = [['diag', [['summary', '종합'], ['compare', '지역 비교']]], ['dem', [['demand', '방문자·수요']]], ['supply', [['now', '현황'], ['trend', '동향']]],
     ['bal', [['balance', '수요 대비 숙소'], ['event', '행사 수용력']]], ['access', [['transit', '대중교통']]],
+    ['pm', [['pmgap', '관광 이동 공백'], ['lastmile', '마지막 1~3km'], ['pmsup', 'PM 공급·규제'], ['pmsafe', '안전']]],
     ['res', [['tourist', '관광지·단지'], ['park', '국립공원'], ['festival', '축제'], ['food', '미식']]],
     ['policy', [['policy', '규제·지정과 검토 신호'], ['effect', '사업 전후 비교'], ['minbak', '도시민박']]], ['method', [['method', '데이터·방법']]]];
   const TABS = GROUPS.flatMap(g => g[1].map(x => x[0])), groupOf = t => GROUPS.find(g => g[1].some(x => x[0] === t));
@@ -3625,6 +3628,7 @@
     if (t === 'policy') renderPolicy();
     if (t === 'event') renderEvent();
     if (t === 'effect') renderEffect();
+    window.PMT?.tab(t);  // PM 연계 탭 (pmtour.js)
     writeHash();
   }
   $('tabs').addEventListener('click', e => { const b = e.target.closest('button[data-g]'); if (b) { const g = GROUPS.find(x => x[0] === b.dataset.g); setTab(lastSub[g[0]] || g[1][0][0]); scrollTo({ top: 0, behavior: 'smooth' }); } });
