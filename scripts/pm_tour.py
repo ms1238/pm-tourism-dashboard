@@ -29,14 +29,38 @@ def xy(lat, lon):  # km on a local plane (good enough for nearest-neighbour dist
     return np.c_[lon * 111.32 * math.cos(math.radians(36.5)), lat * 110.95]
 
 
+ZONE = {1: (222, 226, 230, 190), 2: (173, 181, 189, 200), 3: (108, 117, 125, 200), 4: (33, 37, 41, 180),  # 도보권, PM 5분, PM 10분, 먼 곳: grey steps
+        6: (161, 136, 127, 180)}  # 경사로 PM 곤란 (brown); 0 outside, 5 정류장 자료 부족, 7 산림·수면: transparent
+# Greys and brown only: the lodging dashboard's points (blue, orange, teal, amber, pink, green, purple by 업종) stay readable on top
+
+
+def write_zones():
+    """site/data/pmzone.png: PM 대동여지도's grid (pm/pmgrid.png, the same classes, about 170 m cells) in this dashboard's
+    colours, 도보권 shown too; 산림·수면 (not 생활권 land: forest, water, wetland — PM cannot go there) stays transparent."""
+    from PIL import Image
+    src = os.path.join(DATA, "pm", "pmgrid.png")
+    if not os.path.exists(src):
+        return
+    im = Image.open(src)
+    pal, alpha = [], []
+    for k in range(256):
+        rgba = ZONE.get(k, (0, 0, 0, 0))
+        pal += rgba[:3]
+        alpha.append(rgba[3])
+    out = Image.frombytes("P", im.size, im.tobytes())
+    out.putpalette(pal)
+    out.save(os.path.join(DATA, "pmzone.png"), transparency=bytes(alpha), optimize=True)
+
+
 def main():
+    write_zones()
     meta = load("meta.json")
     st = load("pm", "stats.json")
     pmeta, C = st["meta"], {c: i for i, c in enumerate(st["cols"])}
     pm = load("pm", "pm.json") if os.path.exists(os.path.join(DATA, "pm", "pm.json")) else {}
     acc = load("pm", "accidents.json") if os.path.exists(os.path.join(DATA, "pm", "accidents.json")) else None
     visits = load("visits.json") if os.path.exists(os.path.join(DATA, "visits.json")) else None
-    walk, pm10, good = pmeta["bus_m"] / 1000, pmeta["pm10_m"] / 1000, pmeta["good_routes"]
+    walk, pm5, pm10, good = pmeta["bus_m"] / 1000, pmeta["pm5_m"] / 1000, pmeta["pm10_m"] / 1000, pmeta["good_routes"]
 
     stops = load("pm", "stops.json")  # [lon, lat, routes (-1 unknown), src]
     rail = load("pm", "stations.json")  # [lon, lat, name]
@@ -113,41 +137,42 @@ def main():
         tx = xy([t[0] for t in tour], [t[1] for t in tour]) if tour else np.zeros((0, 2))
         td = tree.query(tx)[0] if tour else np.zeros(0)
         lt = cKDTree(tx).query(lx)[0] if tour and li else np.full(len(li), np.inf)  # lodging → nearest tourist spot
-        cls = lambda d: 0 if d <= walk else 1 if d <= pm10 else 2
-        lcode, tcode = ["9"] * len(pts), ["9"] * len(tour)
-        agg = [[0] * 10 for _ in sd["sgg"]]  # lod n, walk, pm, far, transit 1-3, tour 1-3 | tour n, walk, pm, far
+        cls4 = lambda d: 0 if d <= walk else 1 if d <= pm5 else 2 if d <= pm10 else 3  # 도보권, PM 5분권, PM 10분권, 먼 곳
+        tcode = ["9"] * len(tour)  # per tourist spot, for the 관광지 list of a 시군구
+        agg = [[0] * 7 for _ in sd["sgg"]]  # lod n, walk, pm (≤10분), far, transit 1-3, tour 1-3, pm 5분
         for k, i in enumerate(li):
             g = pts[i][3]
             if no_bus[g]:
                 continue
-            c = cls(ld[k])
-            lcode[i] = str(c)
+            c = cls4(ld[k])
             a = agg[g]
             a[0] += 1
-            a[1 + c] += 1
+            a[(1, 2, 2, 3)[c]] += 1  # 도보권 → walk, PM 5·10분 → pm, 먼 곳 → far
+            a[6] += int(c == 1)
             a[4] += int(L13[0] < ld[k] <= L13[1])
             a[5] += int(L13[0] < lt[k] <= L13[1])
-        tagg = [[0] * 5 for _ in sd["sgg"]]  # n, walk, pm, far, transit 1-3
+        tagg = [[0] * 6 for _ in sd["sgg"]]  # n, walk, pm (≤10분), far, transit 1-3, pm 5분
         for k, t in enumerate(tour):
             g = t[3]
             if g < 0 or g >= len(sd["sgg"]) or no_bus[g]:
                 continue
-            c = cls(td[k])
+            c = cls4(td[k])
             tcode[k] = str(c)
             a = tagg[g]
             a[0] += 1
-            a[1 + c] += 1
+            a[(1, 2, 2, 3)[c]] += 1
+            a[5] += int(c == 1)
             a[4] += int(L13[0] < td[k] <= L13[1])
         with open(os.path.join(DATA, "pmtour", f"{si}.json"), "w", encoding="utf-8") as f:
-            json.dump({"lod": "".join(lcode), "tour": "".join(tcode)}, f, separators=(",", ":"))
+            json.dump({"tour": "".join(tcode)}, f, separators=(",", ":"))
         for gi, g in enumerate(sd["sgg"]):
-            units.append([si, gi, int(no_bus[gi]), *agg[gi][:6], *tagg[gi], visitors(si, gi), *pm_figures(mem_of[gi])])
+            units.append([si, gi, int(no_bus[gi]), *agg[gi][:6], *tagg[gi][:5], visitors(si, gi), *pm_figures(mem_of[gi]), agg[gi][6], tagg[gi][5]])
         print(f"{sd['name']}: {len(li)} lodgings, {len(tour)} tourist spots", flush=True)
 
     cols = ["si", "gi", "nobus", "lod", "lod_walk", "lod_pm", "lod_far", "lod_l13", "lod_t13", "tour", "tour_walk", "tour_pm", "tour_far", "tour_l13",
-            "vis", "ops", "fleet", "fleet_date", "park", "tow", "fee", "grace", "note", "btow", "dpark", "nokick", "bike_km", "bike_ded_km", "acc", "acc_ks"]
+            "vis", "ops", "fleet", "fleet_date", "park", "tow", "fee", "grace", "note", "btow", "dpark", "nokick", "bike_km", "bike_ded_km", "acc", "acc_ks", "lod_pm5", "tour_pm5"]
     out = {"cols": cols, "units": units,
-           "meta": {"walk_m": pmeta["bus_m"], "pm10_m": pmeta["pm10_m"], "good_routes": good, "pm_speed": pmeta.get("pm_speed"),
+           "meta": {"walk_m": pmeta["bus_m"], "pm5_m": pmeta["pm5_m"], "pm10_m": pmeta["pm10_m"], "grid_bounds": pmeta.get("grid_bounds"), "good_routes": good, "pm_speed": pmeta.get("pm_speed"),
                     "pm_detour": pmeta.get("pm_detour"), "pm_ops_date": pmeta.get("pm_ops_date"), "stops_collected": pmeta.get("stops_collected"),
                     "visits_last": (visits or {}).get("last"), "acc_title": (acc or {}).get("meta", {}).get("title"),
                     "bike_date": (pmeta.get("bike_road") or {}).get("date")}}
